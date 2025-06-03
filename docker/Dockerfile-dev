@@ -1,0 +1,10 @@
+FROM oven/bun:1.1 AS builder
+
+WORKDIR /app
+COPY package.json ./
+RUN bun install
+#COPY . . # We don't copy the files in for dev, keep on host system
+
+EXPOSE 3000
+
+CMD ["bun", "run", "dev"]

@@ -3,6 +3,7 @@ import {Context} from "hono";
 import {errorHandler} from "../router/error";
 import {ZodSafeParseResult} from "zod/v4";
 import * as eventService from "../services/eventService";
+import {UserEventResolution} from "../services/eventService";
 
 const eventHandler = async (c: Context) => {
   const body = await c.req.json();
@@ -20,10 +21,10 @@ const eventHandler = async (c: Context) => {
   const userEvent: UserEvent = result.data;
 
   // Handle it with at the service layer
-  eventService.handleUserEvent(userEvent);
+  const ueResolution: UserEventResolution = eventService.handleUserEvent(userEvent);
 
   // Return whatever is necessary
-  return c.json(userEvent);
+  return c.json(ueResolution);
 };
 
 export default eventHandler;

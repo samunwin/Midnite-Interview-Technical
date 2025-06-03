@@ -4,3 +4,6 @@ bun.lock
 
 # IDE
 .idea/
+
+# Secrets
+.env

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import {DepositEventType, WithdrawEventType} from "./config/constants";
 
 export type UserEvent = {
     type: string;
@@ -8,7 +9,7 @@ export type UserEvent = {
 };
 
 export const ZodUserEventSchema = z.object({
-    type: z.union([z.string('deposit'), z.string('withdraw')]),
+    type: z.union([z.string(DepositEventType), z.string(WithdrawEventType)]),
     amount: z.preprocess(
         (value: any): any => {
             if (typeof value === "string") {

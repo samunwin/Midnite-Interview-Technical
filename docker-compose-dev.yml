@@ -2,14 +2,16 @@ services:
   activity:
     container_name: activitymonitor
     image: 'midniteactivitymonitor:latest'
-    build: 
+    build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./docker/Dockerfile-dev
     ports:
       - '3000:3000'
     depends_on:
       - mongo
     restart: unless-stopped
+    volumes:
+      - ./src:/app/src
   mongo:
     container_name: mongodb
     image: mongo
