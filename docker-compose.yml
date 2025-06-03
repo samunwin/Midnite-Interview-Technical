@@ -1,0 +1,12 @@
+
+
+services:
+  activity:
+    container_name: activitymonitor
+    image: 'midniteactivitymonitor:latest'
+    build: 
+      context: .
+      dockerfile: ./docker/Dockerfile
+    ports:
+      - '3000:3000'
+    
