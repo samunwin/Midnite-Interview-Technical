@@ -1,7 +1,7 @@
-
-// Define interface
 import {UserEvent} from "../types";
+import * as mongoose from "mongoose";
 
+// Define interface for the repo
 interface IUserFinanceRepository {
     logEvent(e: UserEvent): void;
     getAlertableSingleWithdrawalAmount(): number;
@@ -23,8 +23,18 @@ export class FinanceRepository implements IUserFinanceRepository {
         return FinanceRepository.instance;
     }
 
-    private createConnection() {
+    private async createConnection() {
         // Connection logic here
+        const mongoHost: string = process.env.MONGO_DB_URL as string;
+        const mongoPort: number = parseInt(process.env.MONGO_DB_PORT as string);
+        const connectionString: string = `mongodb://${mongoHost}:${mongoPort}/activityMon`;
+
+        console.log(`financeRepository: connection string built ${connectionString}`);
+
+        this.connection = await mongoose.connect(connectionString);
+
+        console.log('financeRepository: connected to mongodb');
+
         return { connected: true };
     }
 

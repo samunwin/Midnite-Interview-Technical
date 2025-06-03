@@ -12,6 +12,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./src:/app/src
+    env_file:
+      - docker/.env
   mongo:
     container_name: mongodb
     image: mongo
@@ -21,6 +23,5 @@ services:
     logging:
       options:
         max-size: 1g
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
+    env_file:
+      - docker/.env
