@@ -45,6 +45,7 @@ export class FinanceRepository implements IUserFinanceRepository {
 
         const insertEvent = this.connection?.prepare(query);
 
+        console.log(e.type);
         const result = insertEvent?.run(
             e.type,
             e.user_id,
