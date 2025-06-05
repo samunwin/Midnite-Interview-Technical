@@ -3,9 +3,10 @@ import {Database} from "bun:sqlite";
 
 // Define interface for the repo
 interface IUserFinanceRepository {
-    logEvent(e: UserEvent): void;
-    getAlertableSingleWithdrawalAmount(): number;
-    getNumberOfAlertableConsecutiveWithdrawals(): number;
+    logTxn(e: UserEvent): void;
+    getPreviousTxnsForUser(user_id: number, limit: number): Promise<UserEvent[]>;
+    getAlertableSingleWithdrawalAmount(): Promise<number>;
+    getNumberOfAlertableConsecutiveWithdrawals(): Promise<number>;
 }
 
 export class FinanceRepository implements IUserFinanceRepository {
@@ -26,17 +27,20 @@ export class FinanceRepository implements IUserFinanceRepository {
     }
 
     private async createConnection(): Promise<Database> {
-        // Connection logic here
         const db: Database = new Database("src/db.sqlite", { create: true });
 
         const createTablesQuery: string = await this.readSqlFromFile('create_tables.sql');
 
-        db.query(createTablesQuery).run();
+        try {
+            db.exec(createTablesQuery);
+        } catch(e) {
+            console.log(`caught error creating/updating tables: ${e}`);
+        }
 
         return db;
     }
 
-    public async logEvent(e: UserEvent): Promise<void> {
+    public async logTxn(e: UserEvent): Promise<boolean> {
         const query: string = await this.readSqlFromFile('insert_event.sql');
 
         const insertEvent = this.connection?.prepare(query);
@@ -48,14 +52,39 @@ export class FinanceRepository implements IUserFinanceRepository {
             e.t,
         );
 
-        console.log(result?.lastInsertRowid);
+        const lastRowExists: boolean = !!(result?.lastInsertRowid);
+        return lastRowExists;
     }
 
-    public getAlertableSingleWithdrawalAmount(): number {
-        return 100;
+    public async getPreviousTxnsForUser(user_id: number, limit: number): Promise<UserEvent[]> {
+        const query: string = await this.readSqlFromFile('get_events_by_user_id.sql');
+
+        const results = this.connection?.query(query).all(user_id, limit);
+
+        let events: UserEvent[] = [];
+        results?.forEach((dbRow: any) => {
+            events.push({
+                type: dbRow.type,
+                amount: dbRow.amount,
+                user_id: dbRow.user_id,
+                t: dbRow.time,
+            });
+        });
+
+        return events;
     }
 
-    public getNumberOfAlertableConsecutiveWithdrawals(): number {
+    public async getAlertableSingleWithdrawalAmount(): Promise<number> {
+        const key: string = 'alertable_single_withdrawal_amount';
+
+        const query: string = await this.readSqlFromFile('get_config_value.sql');
+
+        const result: any = this.connection?.query(query).get(key);
+
+        return result.value;
+    }
+
+    public async getNumberOfAlertableConsecutiveWithdrawals(): Promise<number> {
         return 3;
     }
 

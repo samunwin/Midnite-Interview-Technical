@@ -21,7 +21,7 @@ const eventHandler = async (c: Context) => {
   const userEvent: UserEvent = result.data;
 
   // Handle it with at the service layer
-  const ueResolution: UserEventResolution = eventService.handleUserEvent(userEvent);
+  const ueResolution: UserEventResolution = await eventService.handleUserEvent(userEvent);
 
   // Return whatever is necessary
   return c.json(ueResolution);
