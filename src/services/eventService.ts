@@ -1,6 +1,7 @@
 import {UserEvent} from "../types";
 import {WithdrawEventType} from "../config/constants";
 import {FinanceRepository} from "../repositories/financeRepository";
+import event from "../controllers/event";
 
 export type UserEventResolution = {
     alert: boolean;
@@ -36,7 +37,7 @@ export const handleUserEvent = (userEvent: UserEvent): UserEventResolution => {
 
 
     // Log the event
-    // dbRepo.
+    dbRepo.logEvent(userEvent);
 
     // Return the resolution
     return ueResolution;

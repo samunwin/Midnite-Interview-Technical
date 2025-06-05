@@ -7,21 +7,8 @@ services:
       dockerfile: ./docker/Dockerfile-dev
     ports:
       - '3000:3000'
-    depends_on:
-      - mongo
     restart: unless-stopped
     volumes:
       - ./src:/app/src
-    env_file:
-      - docker/.env
-  mongo:
-    container_name: mongodb
-    image: mongo
-    ports:
-      - '27017:27017'
-    restart: unless-stopped
-    logging:
-      options:
-        max-size: 1g
     env_file:
       - docker/.env

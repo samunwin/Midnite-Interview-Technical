@@ -1,5 +1,5 @@
 import {UserEvent} from "../types";
-import * as mongoose from "mongoose";
+import {Database} from "bun:sqlite";
 
 // Define interface for the repo
 interface IUserFinanceRepository {
@@ -10,10 +10,12 @@ interface IUserFinanceRepository {
 
 export class FinanceRepository implements IUserFinanceRepository {
     private static instance: FinanceRepository;
-    private connection: any;
+    private connection: Database | undefined;
 
     private constructor() {
-        this.connection = this.createConnection();
+        this.createConnection().then((db: Database) => {
+            this.connection = db;
+        });
     }
 
     public static getInstance(): FinanceRepository {
@@ -23,23 +25,30 @@ export class FinanceRepository implements IUserFinanceRepository {
         return FinanceRepository.instance;
     }
 
-    private async createConnection() {
+    private async createConnection(): Promise<Database> {
         // Connection logic here
-        const mongoHost: string = process.env.MONGO_DB_URL as string;
-        const mongoPort: number = parseInt(process.env.MONGO_DB_PORT as string);
-        const connectionString: string = `mongodb://${mongoHost}:${mongoPort}/activityMon`;
+        const db: Database = new Database("src/db.sqlite", { create: true });
 
-        console.log(`financeRepository: connection string built ${connectionString}`);
+        const createTablesQuery: string = await this.readSqlFromFile('create_tables.sql');
 
-        this.connection = await mongoose.connect(connectionString);
+        db.query(createTablesQuery).run();
 
-        console.log('financeRepository: connected to mongodb');
-
-        return { connected: true };
+        return db;
     }
 
-    public logEvent(e: UserEvent): void {
-        //
+    public async logEvent(e: UserEvent): Promise<void> {
+        const query: string = await this.readSqlFromFile('insert_event.sql');
+
+        const insertEvent = this.connection?.prepare(query);
+
+        const result = insertEvent?.run(
+            e.type,
+            e.user_id,
+            e.amount,
+            e.t,
+        );
+
+        console.log(result?.lastInsertRowid);
     }
 
     public getAlertableSingleWithdrawalAmount(): number {
@@ -48,5 +57,11 @@ export class FinanceRepository implements IUserFinanceRepository {
 
     public getNumberOfAlertableConsecutiveWithdrawals(): number {
         return 3;
+    }
+
+    private readSqlFromFile(filename: string): Promise<string> {
+        const queryFile: Bun.BunFile = Bun.file(`src/repositories/sql/${filename}`);
+
+        return queryFile.text();
     }
 }
