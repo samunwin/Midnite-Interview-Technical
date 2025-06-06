@@ -2,11 +2,13 @@ import {UserEvent} from "../types";
 import {Database} from "bun:sqlite";
 
 // Define interface for the repo
-interface IUserFinanceRepository {
+export interface IUserFinanceRepository {
     logTxn(e: UserEvent): void;
     getPreviousTxnsForUser(user_id: number, limit: number): Promise<UserEvent[]>;
+    getPreviousTxnsForUserOfType(user_id: number, limit: number, type: string): Promise<UserEvent[]>;
     getAlertableSingleWithdrawalAmount(): Promise<number>;
     getNumberOfAlertableConsecutiveWithdrawals(): Promise<number>;
+    getNumberOfAlertableConsecutiveIncreasingDeposits(): Promise<number>;
 }
 
 export class FinanceRepository implements IUserFinanceRepository {
@@ -45,7 +47,6 @@ export class FinanceRepository implements IUserFinanceRepository {
 
         const insertEvent = this.connection?.prepare(query);
 
-        console.log(e.type);
         const result = insertEvent?.run(
             e.type,
             e.user_id,
@@ -75,18 +76,42 @@ export class FinanceRepository implements IUserFinanceRepository {
         return events;
     }
 
-    public async getAlertableSingleWithdrawalAmount(): Promise<number> {
-        const key: string = 'alertable_single_withdrawal_amount';
+    public async getPreviousTxnsForUserOfType(user_id: number, limit: number, type: string): Promise<UserEvent[]> {
+        const query: string = await this.readSqlFromFile('get_events_by_user_id_and_type.sql');
 
+        const results = this.connection?.query(query).all(user_id, type, limit);
+
+        let events: UserEvent[] = [];
+        results?.forEach((dbRow: any) => {
+            events.push({
+                type: dbRow.type,
+                amount: dbRow.amount,
+                user_id: dbRow.user_id,
+                t: dbRow.time,
+            });
+        });
+
+        return events;
+    }
+
+    public async getAlertableSingleWithdrawalAmount(): Promise<number> {
+        return parseInt(await this.getConfig('alertable_single_withdrawal_amount'));
+    }
+
+    public async getNumberOfAlertableConsecutiveWithdrawals(): Promise<number> {
+        return parseInt(await this.getConfig('alertable_consecutive_withdrawals'));
+    }
+
+    public async getNumberOfAlertableConsecutiveIncreasingDeposits(): Promise<number> {
+        return parseInt(await this.getConfig('alertable_consecutive_increasing_deposits'));
+    }
+
+    private async getConfig(key: string): Promise<string> {
         const query: string = await this.readSqlFromFile('get_config_value.sql');
 
         const result: any = this.connection?.query(query).get(key);
 
         return result.value;
-    }
-
-    public async getNumberOfAlertableConsecutiveWithdrawals(): Promise<number> {
-        return 3;
     }
 
     private readSqlFromFile(filename: string): Promise<string> {

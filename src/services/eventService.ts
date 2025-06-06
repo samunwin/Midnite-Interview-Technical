@@ -1,6 +1,6 @@
 import {UserEvent} from "../types";
-import {WithdrawEventType} from "../config/constants";
-import {FinanceRepository} from "../repositories/financeRepository";
+import {DepositEventType, WithdrawEventType} from "../config/constants";
+import {FinanceRepository, IUserFinanceRepository} from "../repositories/financeRepository";
 import {use} from "hono/dist/types/jsx";
 import {maximum} from "zod/v4-mini";
 
@@ -18,6 +18,7 @@ const alertCodes = {
 };
 
 export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventResolution> => {
+    // should pass this in so i can mock it
     const dbRepo: FinanceRepository = FinanceRepository.getInstance();
 
     // Log the event first
@@ -51,7 +52,9 @@ export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventRe
     }
 
     // `x` consecutive increasing deposits
-    // TODO
+    if (previousUserDepositsIncreasing(dbRepo, userEvent)) {
+        ueResolution.alert_codes.push(alertCodes.consecutiveIncreasingDeposits);
+    }
 
     // Set the alert on the resolution depending on if there's alert codes
     if (ueResolution.alert_codes.length !== 0) {
@@ -60,4 +63,16 @@ export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventRe
 
     // Return the resolution
     return ueResolution;
+};
+
+const previousUserDepositsIncreasing = async (dbRepo : IUserFinanceRepository, userEvent: UserEvent): boolean => {
+    const maxConsecutiveIncreasingDeposits: number = await dbRepo.getNumberOfAlertableConsecutiveIncreasingDeposits();
+    const previousUserDepositTransactions: any[] = await dbRepo.getPreviousTxnsForUserOfType(userEvent.user_id, maxConsecutiveIncreasingDeposits, DepositEventType);
+
+    if (maxConsecutiveIncreasingDeposits !== previousUserDepositTransactions.length) {
+        return false;
+    }
+
+    const areIncreasing: boolean = previousUserDepositTransactions.every((item: any, i: number, array: any[]) => i === 0 || item.amount > array[i - 1].amount);
+    return areIncreasing;
 };
