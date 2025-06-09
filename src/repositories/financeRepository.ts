@@ -7,8 +7,10 @@ export interface IUserFinanceRepository {
     getPreviousTxnsForUser(user_id: number, limit: number): Promise<UserEvent[]>;
     getPreviousTxnsForUserOfType(user_id: number, limit: number, type: string): Promise<UserEvent[]>;
     getAlertableSingleWithdrawalAmount(): Promise<number>;
+    getAlertableShortTermAccumulativeAmount(): Promise<number>;
     getNumberOfAlertableConsecutiveWithdrawals(): Promise<number>;
     getNumberOfAlertableConsecutiveIncreasingDeposits(): Promise<number>;
+    getNumberOfAlertableShortTermAccumulativeDeposits(): Promise<number>;
 }
 
 export class FinanceRepository implements IUserFinanceRepository {
@@ -98,12 +100,20 @@ export class FinanceRepository implements IUserFinanceRepository {
         return parseInt(await this.getConfig('alertable_single_withdrawal_amount'));
     }
 
+    public async getAlertableShortTermAccumulativeAmount(): Promise<number> {
+        return parseInt(await this.getConfig('alertable_cumulative_short_term_deposit_amount'));
+    }
+
     public async getNumberOfAlertableConsecutiveWithdrawals(): Promise<number> {
         return parseInt(await this.getConfig('alertable_consecutive_withdrawals'));
     }
 
     public async getNumberOfAlertableConsecutiveIncreasingDeposits(): Promise<number> {
         return parseInt(await this.getConfig('alertable_consecutive_increasing_deposits'));
+    }
+
+    public async getNumberOfAlertableShortTermAccumulativeDeposits(): Promise<number> {
+        return parseInt(await this.getConfig('alertable_cumulative_short_term_deposit_amount'));
     }
 
     private async getConfig(key: string): Promise<string> {

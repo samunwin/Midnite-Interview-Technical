@@ -21,4 +21,5 @@ INSERT OR IGNORE INTO Config (key, value, description) VALUES
    ('alertable_single_withdrawal_amount', '100.00', 'Single withdrawal amount that triggers an alert'),
    ('alertable_consecutive_withdrawals', '3', 'Number of consecutive withdrawals that trigger an alert'),
    ('alertable_consecutive_increasing_deposits', '3', 'Number of consecutive increasing deposits that trigger an alert'),
+   ('alertable_cumulative_short_term_deposits', '3', 'Number of of cumulative short term deposits that trigger an alert'),
    ('alertable_cumulative_short_term_deposit_amount', '200', 'Total of cumulative deposits within 30 seconds that trigger an alert');

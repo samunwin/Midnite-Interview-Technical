@@ -36,24 +36,23 @@ export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventRe
     };
 
     // Withdrawal amount over the maximum allowed in single withdrawal
-    const triggerAmount: number = await dbRepo.getAlertableSingleWithdrawalAmount();
-    if (userEvent.type === WithdrawEventType && userEvent.amount > triggerAmount) {
+    if (await withdrawalOverAllowedInSingleTransaction(dbRepo, userEvent)) {
         ueResolution.alert_codes.push(alertCodes.maxSingleWithdrawal);
     }
 
     // `x` amount of consecutive withdrawals
-    const maxConsecutiveWithdrawals: number = await dbRepo.getNumberOfAlertableConsecutiveWithdrawals();
-    const previousUserTransactions: any[] = await dbRepo.getPreviousTxnsForUser(userEvent.user_id, maxConsecutiveWithdrawals);
-    const prevThreeWereWithdrawals: boolean = previousUserTransactions.every((txn: any) => {
-        return txn.type === WithdrawEventType;
-    });
-    if (userEvent.type === WithdrawEventType && prevThreeWereWithdrawals && previousUserTransactions.length === maxConsecutiveWithdrawals) {
+    if (await previousUserWithdrawalsAreConsecutive(dbRepo, userEvent)) {
         ueResolution.alert_codes.push(alertCodes.consecutiveWithdrawals);
     }
 
     // `x` consecutive increasing deposits
-    if (previousUserDepositsIncreasing(dbRepo, userEvent)) {
+    if (await previousUserDepositsIncreasing(dbRepo, userEvent)) {
         ueResolution.alert_codes.push(alertCodes.consecutiveIncreasingDeposits);
+    }
+
+    // accumulative deposit amount over `x` over 30 seconds
+    if (await accumulativeDepositsOverThreshold(dbRepo, userEvent)) {
+        ueResolution.alert_codes.push(alertCodes.accumulativeDepositAmount);
     }
 
     // Set the alert on the resolution depending on if there's alert codes
@@ -65,7 +64,30 @@ export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventRe
     return ueResolution;
 };
 
-const previousUserDepositsIncreasing = async (dbRepo : IUserFinanceRepository, userEvent: UserEvent): boolean => {
+const withdrawalOverAllowedInSingleTransaction = async (dbRepo: IUserFinanceRepository, userEvent: UserEvent): Promise<boolean> => {
+    const triggerAmount: number = await dbRepo.getAlertableSingleWithdrawalAmount();
+    if (userEvent.type === WithdrawEventType && userEvent.amount > triggerAmount) {
+        return true;
+    }
+
+    return false;
+};
+
+const previousUserWithdrawalsAreConsecutive = async(dbRepo: IUserFinanceRepository, userEvent: UserEvent): Promise<boolean> => {
+    const maxConsecutiveWithdrawals: number = await dbRepo.getNumberOfAlertableConsecutiveWithdrawals();
+    const previousUserTransactions: any[] = await dbRepo.getPreviousTxnsForUser(userEvent.user_id, maxConsecutiveWithdrawals);
+    const prevThreeWereWithdrawals: boolean = previousUserTransactions.every((txn: any) => {
+        return txn.type === WithdrawEventType;
+    });
+
+    if (userEvent.type === WithdrawEventType && prevThreeWereWithdrawals && previousUserTransactions.length === maxConsecutiveWithdrawals) {
+        return true;
+    }
+
+    return false;
+};
+
+const previousUserDepositsIncreasing = async (dbRepo : IUserFinanceRepository, userEvent: UserEvent): Promise<boolean> => {
     const maxConsecutiveIncreasingDeposits: number = await dbRepo.getNumberOfAlertableConsecutiveIncreasingDeposits();
     const previousUserDepositTransactions: any[] = await dbRepo.getPreviousTxnsForUserOfType(userEvent.user_id, maxConsecutiveIncreasingDeposits, DepositEventType);
 
@@ -75,4 +97,14 @@ const previousUserDepositsIncreasing = async (dbRepo : IUserFinanceRepository, u
 
     const areIncreasing: boolean = previousUserDepositTransactions.every((item: any, i: number, array: any[]) => i === 0 || item.amount > array[i - 1].amount);
     return areIncreasing;
+};
+
+const accumulativeDepositsOverThreshold = async (dbRepo: IUserFinanceRepository, userEvent: UserEvent): Promise<boolean> => {
+    const numberOfRecentDepositsThreshold: number = await dbRepo.getNumberOfAlertableShortTermAccumulativeDeposits();
+    const previousUserTransactions: any[] = await dbRepo.getPreviousTxnsForUser(userEvent.user_id, numberOfRecentDepositsThreshold);
+
+    const sum: number = previousUserTransactions.reduce((acc, curr) => acc + curr.amount);
+    const cumulativeDepositThreshold: number = await dbRepo.getAlertableShortTermAccumulativeAmount();
+
+    return sum > cumulativeDepositThreshold;
 };
