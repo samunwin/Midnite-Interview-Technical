@@ -17,14 +17,12 @@ const alertCodes = {
     accumulativeDepositAmount: 123,
 };
 
-export const handleUserEvent = async (userEvent: UserEvent): Promise<UserEventResolution> => {
-    // should pass this in so i can mock it
-    const dbRepo: FinanceRepository = FinanceRepository.getInstance();
-
+export const handleUserEvent = async (dbRepo: IUserFinanceRepository, userEvent: UserEvent): Promise<UserEventResolution> => {
     // Log the event first
     dbRepo.logTxn(userEvent).then((ok: boolean) => {
         if (!ok) {
             console.log('error logging event to db');
+            return {};
         }
     });
 
@@ -106,5 +104,5 @@ const accumulativeDepositsOverThreshold = async (dbRepo: IUserFinanceRepository,
     const sum: number = previousUserTransactions.reduce((acc, curr) => acc + curr.amount);
     const cumulativeDepositThreshold: number = await dbRepo.getAlertableShortTermAccumulativeAmount();
 
-    return sum > cumulativeDepositThreshold;
+    return (sum > cumulativeDepositThreshold) && userEvent.type === DepositEventType;
 };

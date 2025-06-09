@@ -10,5 +10,3 @@ services:
     restart: unless-stopped
     volumes:
       - ./src:/app/src
-    env_file:
-      - docker/.env

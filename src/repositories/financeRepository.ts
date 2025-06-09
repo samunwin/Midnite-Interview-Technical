@@ -3,7 +3,7 @@ import {Database} from "bun:sqlite";
 
 // Define interface for the repo
 export interface IUserFinanceRepository {
-    logTxn(e: UserEvent): void;
+    logTxn(e: UserEvent): Promise<boolean>;
     getPreviousTxnsForUser(user_id: number, limit: number): Promise<UserEvent[]>;
     getPreviousTxnsForUserOfType(user_id: number, limit: number, type: string): Promise<UserEvent[]>;
     getAlertableSingleWithdrawalAmount(): Promise<number>;
